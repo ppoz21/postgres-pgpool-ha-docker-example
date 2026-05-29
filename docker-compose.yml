@@ -1,0 +1,104 @@
+services:
+  postgres-primary:
+    image: postgres:15-bookworm
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command:
+      - postgres
+      - -c
+      - listen_addresses=*
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby=on
+    ports:
+      - "15433:5432"
+    volumes:
+      - primary-data:/var/lib/postgresql/data
+      - ./postgres/primary/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - pg-ha
+
+  postgres-replica:
+    image: postgres:15-bookworm
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: "5432"
+      REPLICATION_USER: replicator
+    entrypoint: ["/usr/local/bin/replica-entrypoint.sh"]
+    command:
+      - postgres
+      - -c
+      - listen_addresses=*
+      - -c
+      - hot_standby=on
+    ports:
+      - "15434:5432"
+    volumes:
+      - replica-data:/var/lib/postgresql/data
+      - ./postgres/replica/entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - pg-ha
+
+  pgpool:
+    build:
+      context: ./pgpool
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      postgres-replica:
+        condition: service_healthy
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "psql -h 127.0.0.1 -p 5432 -U app_user -d appdb -c 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - pg-ha
+
+  client:
+    image: postgres:15-bookworm
+    profiles:
+      - tools
+    environment:
+      PGHOST: pgpool
+      PGPORT: "5432"
+      PGUSER: app_user
+      PGDATABASE: appdb
+    entrypoint: ["psql"]
+    depends_on:
+      pgpool:
+        condition: service_healthy
+    networks:
+      - pg-ha
+
+networks:
+  pg-ha:
+    name: pg-ha
+
+volumes:
+  primary-data:
+  replica-data:
