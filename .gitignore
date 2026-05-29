@@ -1,0 +1,6 @@
+.idea/
+.DS_Store
+
+# Docker/PostgreSQL runtime data if local bind mounts are used later.
+data/
+*.log
