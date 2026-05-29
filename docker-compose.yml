@@ -1,6 +1,6 @@
 services:
   postgres-primary:
-    image: postgres:15-bookworm
+    image: ${POSTGRES_IMAGE:-postgres:18-bookworm}
     environment:
       POSTGRES_DB: appdb
       POSTGRES_USER: postgres
@@ -21,7 +21,7 @@ services:
     ports:
       - "15433:5432"
     volumes:
-      - primary-data:/var/lib/postgresql/data
+      - primary-data:/var/lib/postgresql
       - ./postgres/primary/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
@@ -32,7 +32,7 @@ services:
       - pg-ha
 
   postgres-replica:
-    image: postgres:15-bookworm
+    image: ${POSTGRES_IMAGE:-postgres:18-bookworm}
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
       PRIMARY_HOST: postgres-primary
@@ -48,7 +48,7 @@ services:
     ports:
       - "15434:5432"
     volumes:
-      - replica-data:/var/lib/postgresql/data
+      - replica-data:/var/lib/postgresql
       - ./postgres/replica/entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
     depends_on:
       postgres-primary:
@@ -80,7 +80,7 @@ services:
       - pg-ha
 
   client:
-    image: postgres:15-bookworm
+    image: ${POSTGRES_IMAGE:-postgres:18-bookworm}
     profiles:
       - tools
     environment:

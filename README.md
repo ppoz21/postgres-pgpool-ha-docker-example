@@ -39,6 +39,34 @@ This is a local lab setup. It intentionally uses trust authentication inside the
 - Docker Compose v2
 - `make` is optional, but recommended for shorter commands
 
+## PostgreSQL Version
+
+The default PostgreSQL image is:
+
+```bash
+postgres:18-bookworm
+```
+
+To run the same lab on PostgreSQL 16 instead, set `POSTGRES_IMAGE` when starting the cluster:
+
+```bash
+POSTGRES_IMAGE=postgres:16-bookworm docker compose up -d --build
+```
+
+Or:
+
+```bash
+POSTGRES_IMAGE=postgres:16-bookworm make up
+```
+
+PostgreSQL major versions use incompatible data directories. If you switch between major versions, reset the lab first:
+
+```bash
+make reset
+```
+
+The Compose file mounts the PostgreSQL volume at `/var/lib/postgresql` and sets `PGDATA` explicitly. This keeps the lab layout predictable across PostgreSQL 16 and PostgreSQL 18 Docker images.
+
 ## Start The Cluster
 
 ```bash
