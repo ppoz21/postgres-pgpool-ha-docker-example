@@ -187,7 +187,10 @@ Run multiple read queries through Pgpool:
 
 ```bash
 for i in $(seq 1 20); do
-  docker compose run --rm --no-deps client -c "SELECT count(*) AS rows FROM ha_demo;"
+  echo "---- read $i ----"
+  docker compose run --rm --no-deps client \
+    -c "SHOW pool_nodes;" \
+    -c "SELECT count(*) AS rows FROM ha_demo;"
 done
 ```
 
@@ -205,7 +208,11 @@ docker compose run --rm --no-deps client -c "SHOW pool_nodes;"
 
 The `select_cnt` column should increase on both nodes. That shows Pgpool is distributing read queries.
 
-Diagnostic functions such as `pg_is_in_recovery()` can be routed to the primary by Pgpool, so use a plain read query like `SELECT count(*)` for this load-balancing test.
+During each loop iteration, the row where `load_balance_node` is `true` shows the backend selected by Pgpool for that client session. The following `SELECT count(*)` runs in the same session.
+
+The demo uses session-level load balancing, so `load_balance_node` matches the backend used by that session's read query.
+
+Diagnostic functions such as `pg_is_in_recovery()` can be routed to the primary by Pgpool, so this test uses Pgpool's own `SHOW pool_nodes` output instead.
 
 ## Test Replica Failure
 

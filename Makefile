@@ -28,7 +28,10 @@ read:
 	$(CLIENT) -c "SELECT count(*) AS rows FROM ha_demo;"
 
 read-loop:
-	for i in $$(seq 1 20); do $(CLIENT) -c "SELECT count(*) AS rows FROM ha_demo;"; done
+	@for i in $$(seq 1 20); do \
+		echo "---- read $$i ----"; \
+		$(CLIENT) -c "SHOW pool_nodes;" -c "SELECT count(*) AS rows FROM ha_demo;"; \
+	done
 
 replica-status:
 	$(COMPOSE) exec postgres-primary psql -U postgres -d appdb -c "SELECT application_name, state, sync_state, replay_lag FROM pg_stat_replication;"
